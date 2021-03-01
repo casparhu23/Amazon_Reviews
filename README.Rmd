@@ -1,0 +1,274 @@
+---
+always_allow_html: true
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# Load the package required to read JSON files.
+library(rjson)
+library(reticulate)
+library(dplyr)
+library(sentimentr)
+library(lexicon)
+library(magrittr)
+library(stringr)
+
+use_python("/Users/Caspar/Library/r-miniconda/envs/r-reticulate/bin/python")
+```
+## Load data 
+```{python}
+#py_install("pandas")
+import pandas as pd 
+import gzip
+
+def parse(path):
+  g = gzip.open(path, 'rb')
+  for l in g:
+    yield eval(l)
+
+def getDF(path):
+  i = 0
+  df = {}
+  for d in parse(path):
+    df[i] = d
+    i += 1
+  return pd.DataFrame.from_dict(df, orient='index')
+
+tg_review = getDF('/Users/Caspar/Downloads/reviews_Toys_and_Games_5.json.gz')
+
+
+tg_review
+```
+
+## Python format to R format
+```{r}
+df2 <- py$tg_review
+```
+
+```{r}
+tg_review_r <- df2[,c("reviewerName","reviewText","overall","summary","reviewTime")]
+tg_review_r$reviewerName <- unlist(tg_review_r$reviewerName)
+
+tg_review_r$reviewTime <- str_replace_all(tg_review_r$reviewTime,"([0-9]{2})\\s([0-9]{1,2}),\\s([0-9]{4})",
+                                       "\\3-\\2-\\1")
+tg_review_r$reviewTime <- str_replace_all(tg_review_r$reviewTime,"-([0-9])-", "-0\\1-")
+
+                                          
+tg_review_r$reviewTime  <- str_replace_all(tg_review_r$reviewTime,"([0-9]{4})-([0-9]{2})-([0-9]{2})",
+                                       "\\1-\\3-\\2")
+```
+
+## Board Games dataset
+```{r}
+matches<- str_detect(tg_review_r$reviewText,"[Bb]oard.?")
+
+board_game_df <- tg_review_r[which(matches),]
+
+```
+
+## Text Cleaning
+```{r}
+library(stringr)
+library(tidyr)
+
+boardGames_review <- board_game_df
+
+boardGames_review$reviewText <- str_to_lower(boardGames_review$reviewText)
+
+head(boardGames_review$reviewText)
+
+```
+
+### Stem text
+```{r}
+library(tm)
+
+stem_bg <- tm::stemDocument(boardGames_review$reviewText)
+
+documentsCorp <- tm::SimpleCorpus(VectorSource(stem_bg))
+
+documentsDTM <- DocumentTermMatrix(documentsCorp)
+
+inspect(documentsDTM)
+```
+
+### lemmatize text
+```{r}
+library(textstem)
+boardGames_review$reviewText <- lemmatize_strings(boardGames_review$reviewText)
+```
+
+### sentiment analysis 
+```{r}
+library(sentimentr)
+jocker_bg <- sentiment(get_sentences(boardGames_review$reviewText[1:200]), polarity_dt = lexicon::hash_sentiment_jockers)
+
+jocker_bg_summary <- jocker_bg%>%
+  group_by(element_id)%>%      
+  summarize(meanSentiment =mean(sentiment))
+```
+
+```{r}
+boardGames_review$element_id = 1:nrow(boardGames_review)
+
+boardGames_review_sub200 <- left_join(boardGames_review[1:200,], jocker_bg_summary, by = "element_id")
+
+boardGames_review_sub200 <- boardGames_review_sub200[order(-boardGames_review_sub200$meanSentiment),] 
+
+head(boardGames_review_sub200$reviewText)
+  
+```
+
+## Topic Models
+
+```{r}
+library(stm)
+
+set.seed(1001)
+
+holdoutRows <- sample(1:nrow(boardGames_review), 100, replace = FALSE)
+
+reviewText <- textProcessor(documents = boardGames_review$reviewText[-c(holdoutRows)], 
+                          metadata = boardGames_review[-c(holdoutRows), ], 
+                          stem = FALSE)
+
+reviewPrep <- prepDocuments(documents = reviewText$documents, 
+                               vocab = reviewText$vocab,
+                               meta = reviewText$meta)
+```
+
+```{r}
+kTest <- searchK(documents = reviewPrep$documents, 
+             vocab = reviewPrep$vocab, 
+             K = c(3,4,5,10), verbose = FALSE)   # K = c(3, 4, 5, 10, 20)
+
+plot(kTest)
+```
+
+Looks like four topics are the best choice
+```{r}
+topics4 <- stm(documents = reviewPrep$documents, 
+             vocab = reviewPrep$vocab, seed = 1001,
+             K = 4, verbose = FALSE)
+```
+
+```{r}
+plot(topics4)
+```
+
+```{r}
+labelTopics(topics4)
+```
+
+```{r}
+thoughts_4 <- findThoughts(topics4, texts = reviewPrep$meta$reviewText, n = 1)
+```
+
+
+```{r}
+head(topics4$theta, 15)
+```
+
+We found that Doc 14 has a probability of 81.6% for belonging to topic 5 and let's pull the original review out and see
+ 
+```{r}
+board_game_df[14,'reviewText']
+```
+
+```{r}
+tail(topics4$theta, 15)
+```
+
+Doc 8913 has a probability of 84.1% for belonging to topic 1
+ 
+```{r}
+board_game_df[8913,'reviewText']
+```
+
+```{r}
+reviewPrep$meta[14, ]
+
+reviewPrep$meta[8913, ]
+```
+
+We can also see what terms are in documents 14:
+```{r}
+reviewPrep$documents[[14]]
+```
+
+```{r}
+reviewPrep$vocab[reviewPrep$documents[[14]][1, ]]
+```
+
+```{r}
+reviewPrep$vocab[reviewPrep$documents[[8913]][1, ]]
+```
+
+## Prediction sentiment scores for holdout samples 
+```{r}
+newReviewText <- textProcessor(documents = boardGames_review$reviewText[holdoutRows], 
+                          metadata = boardGames_review[holdoutRows, ], 
+                          stem = FALSE)
+
+newReviewCorp <- alignCorpus(new = newReviewText, old.vocab = topics4$vocab)
+
+newReviewFitted <- fitNewDocuments(model = topics4, documents = newReviewCorp$documents, 
+                newData = newReviewCorp$meta, origData = reviewPrep$meta)
+
+
+newReviewFitted$theta[1:10,]
+
+```
+
+```{r}
+clean_boardGames_review <- boardGames_review%>%
+  mutate( 
+         reviewText = str_replace_all(reviewText, "\n", " "),   
+         reviewText = str_replace_all(reviewText, "(\\[.*?\\])", ""),
+         reviewText = str_squish(reviewText), 
+         reviewText = gsub("([a-z])([A-Z])", "\\1 \\2", reviewText), 
+         reviewText = tolower(reviewText), 
+         reviewText = removeWords(reviewText, c("’", stopwords(kind = "en"))), 
+         reviewText = removePunctuation(reviewText), 
+         reviewText = removeNumbers(reviewText),
+         reviewText = textstem::lemmatize_strings(reviewText), 
+         year = lubridate::year(reviewTime))
+```
+
+
+```{r}
+predictorText <- textProcessor(documents = clean_boardGames_review$reviewText, 
+                          metadata = clean_boardGames_review, 
+                          stem = FALSE)
+
+reviewPrep <- prepDocuments(documents = predictorText$documents, 
+                               vocab = predictorText$vocab,
+                               meta = predictorText$meta)
+
+topicPredictor <- stm(documents = reviewPrep$documents,
+             vocab = reviewPrep$vocab, prevalence = ~ year,
+             data = reviewPrep$meta, K = 4, verbose = FALSE)
+
+
+yearEffect <- estimateEffect(1:4 ~ year, stmobj = topicPredictor,
+               metadata = reviewPrep$meta)
+
+summary(yearEffect, topics = c(1:4))
+
+plot.estimateEffect(yearEffect, "year", method = "continuous",
+                    model = topicPredictor, topics = 1, labeltype = "frex")
+
+plot.estimateEffect(yearEffect, "year", method = "continuous",
+                    model = topicPredictor, topics = 2, labeltype = "frex")
+
+plot.estimateEffect(yearEffect, "year", method = "continuous",
+                    model = topicPredictor, topics = 3, labeltype = "frex")
+
+plot.estimateEffect(yearEffect, "year", method = "continuous",
+                    model = topicPredictor, topics = 4, labeltype = "frex")
+```
+
