@@ -1,4 +1,17 @@
 
+![](/Users/Caspar/Documents/GitHub_Project/Amazon_Reviews/games_01.png)
+
+This project is about Amazon toys & games review data. The dataset can
+be found at <https://jmcauley.ucsd.edu/data/amazon/>. We performed
+sentiment analysis and topic models on games related views. We got
+sentiment score for each customer’s review. We only showed 200 customer
+sentiment score for this project. Then we found out the optimal number
+for qll the topics within 24000 customer reviews. Finally, we conducted
+the time series between 2000 and 2014 to see how the number of topics
+changed within 10 years.
+
+## Load package
+
 ``` r
 # Load the package required to read JSON files.
 library(rjson)
@@ -57,51 +70,37 @@ def getDF(path):
   return pd.DataFrame.from_dict(df, orient='index')
 
 tg_review = getDF('/Users/Caspar/Downloads/reviews_Toys_and_Games_5.json.gz')
-
-
-tg_review
 ```
 
-    ##             reviewerID        asin  ... unixReviewTime   reviewTime
-    ## 0       A1VXOAVRGKGEAK  0439893577  ...     1390953600  01 29, 2014
-    ## 1        A8R62G708TSCM  0439893577  ...     1395964800  03 28, 2014
-    ## 2       A21KH420DK0ICA  0439893577  ...     1359331200  01 28, 2013
-    ## 3        AR29QK6HPFYZ4  0439893577  ...     1391817600   02 8, 2014
-    ## 4        ACCH8EOML6FN5  0439893577  ...     1399248000   05 5, 2014
-    ## ...                ...         ...  ...            ...          ...
-    ## 167592  A18Q24BZK2CB5P  B00LBI9BKA  ...     1404691200   07 7, 2014
-    ## 167593  A1I8ON1X0B2N2W  B00LBI9BKA  ...     1404691200   07 7, 2014
-    ## 167594  A3V24H5350ULKI  B00LBI9BKA  ...     1404777600   07 8, 2014
-    ## 167595  A1W2F1WI0QZ4AJ  B00LBI9BKA  ...     1405641600  07 18, 2014
-    ## 167596   AV6WVMUJVUHNB  B00LBI9BKA  ...     1405382400  07 15, 2014
-    ## 
-    ## [167597 rows x 9 columns]
-
-## Python format to R format
+## Python to R Format
 
 ``` r
 df2 <- py$tg_review
 ```
 
-``` r
-tg_review_r <- df2[,c("reviewerName","reviewText","overall","summary","reviewTime")]
-tg_review_r$reviewerName <- unlist(tg_review_r$reviewerName)
+## Data Cleaning
 
+``` r
+tg_review_r <- df2[,c("reviewerName","reviewText","overall","summary","reviewTime")] # select columns
+tg_review_r$reviewerName <- unlist(tg_review_r$reviewerName) # unlist reviewer name
+
+# adjust review time format 
 tg_review_r$reviewTime <- str_replace_all(tg_review_r$reviewTime,"([0-9]{2})\\s([0-9]{1,2}),\\s([0-9]{4})",
-                                       "\\3-\\2-\\1")
+                                       "\\3-\\2-\\1") 
 tg_review_r$reviewTime <- str_replace_all(tg_review_r$reviewTime,"-([0-9])-", "-0\\1-")
 
-                                          
 tg_review_r$reviewTime  <- str_replace_all(tg_review_r$reviewTime,"([0-9]{4})-([0-9]{2})-([0-9]{2})",
                                        "\\1-\\3-\\2")
 ```
 
-## Board Games dataset
-
 ``` r
-matches<- str_detect(tg_review_r$reviewText,"[Bb]oard.?")
+# Extract reviews related to Game 
+matches<- str_detect(tg_review_r$reviewText,"[Gg]ame.?") 
+game_df <- tg_review_r[which(matches),]
 
-board_game_df <- tg_review_r[which(matches),]
+# Exact reviews except puzzles out of the game_df subset
+matches_2 <- str_detect(game_df$reviewText,"[Pp]uzzle")
+board_game_df <- game_df[-which(matches_2),]
 ```
 
 ## Text Cleaning
@@ -119,21 +118,21 @@ library(tidyr)
     ##     extract
 
 ``` r
-boardGames_review <- board_game_df
+boardGames_review <- board_game_df 
 
-boardGames_review$reviewText <- str_to_lower(boardGames_review$reviewText)
+boardGames_review$reviewText <- str_to_lower(boardGames_review$reviewText) # lower letters  
 
-head(boardGames_review$reviewText)
+head(boardGames_review$reviewText) 
 ```
 
-    ## [1] "both sides are magnetic.  a real plus when you're entertaining more than one child.  the four-year old can find the letters for the words, while the two-year old can find the pictures the words spell.  (i bought letters and magnetic pictures to go with this board).  both grandkids liked it a lot, which means i like it a lot as well.  have not even introduced markers, as this will be used strictly as a magnetic board."                                                                                                                                                  
-    ## [2] "this is a nice magnetic board for the kids to carry around and play with the letter bought additional magnetic pieces from mellissa and doug to increase thier play time with them hope it works"                                                                                                                                                                                                                                                                                                                                                                                      
-    ## [3] "i keep this board on top of the hallway table so that i can quickly write notes (which won't get lost until i erase them) and it folds down neatly so it's easy to hide when company calls.  i also like the size -- not too big and not too small.  quality magnets hold pretty good but i use it mainly for notes. note:  children's alphabet letters don't hold very well - they tend to slide."                                                                                                                                                                                    
-    ## [4] "bought this board along with melissa and doug wood and magnetic letters and numbers kit.  the size is great for my 2-year-old grandson to play with, and there are 2 sides to use.  this is a big hit in my home and will grow with children as they become more creative...great learning tool too.  i also bought a container of magnetic foam objects so we can work with his spelling as he has now mastered his letters and numbers.  i believe it is also compatible with dry-erase markers for older children.  i highly recommend this board...great size to travel with also."
-    ## [5] "the board had to be put away for my 18 month old grand daughter and we used just the refrigerator for the alphabet intending to bring back the board when she got a little older. the wooden letters are not painted, but rather covered with a colored paper which becomes loose rather easily. most of the letters lasted for about 2 months before i had to throw them all out. fortunately she knows all her alphabet by name and we are using other means to teach her how to put them together into words. at age 2 she can now spell her name - molly."                         
-    ## [6] "sturdy and perfect for coffee table. magnets stick easily and it's great for 2 sided products. plus, you can use dry erase on the board for when they get a bit older. good product"
+    ## [1] "we were thrilled to find acquire finally; my husband grew up loving this game. ordered it for my brother.  the game requires strategy, planning, and never ends the same way.  it is a classic, must-have addition for any game closet.  it's a little more time intensive, and the board isn't as flashy as newer games, but hey -- it is exciting to play.  it's all about the acquisitions."                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+    ## [2] "if you have never played, don't let the reviews turn you off. this is a wonderful, mind working game.many people liked the version with the 3-d peices because they don't get bumped... but if you play on a table and aren't trying to hold a baby at the same time or have a cat that likes to jump on games (which are valid concerns), then this version will do fine. i'm not really certain why some people keep buying each version, unless they collect or their old one is worn out from many a good time.i personally have been waiting for a \"flat\"version. i found that the 3-d version was unnecessarily bulky (they could have made a better \"locking system\" if they wanted a bump free version), the pieces were too big to throw into a drawstring bag and draw from (i'd rather not have to turn them all upside down and then make room for all the bulky upside down pieces to take up half my table), and the peices were too bulky to easily conceal from the other players.. we had to all get shoe boxes, or keep them upside down and remember exactly which pieces we had.so all and all, i actually prefer this one. you will have a distinct advantage if you have the type of mind that can keep track of how many of what each player buys.not the best to play with young players because decisions they make can effect everyone else... which is good if they fully understand why they are doing it and what effect it will have, but if they don't, then it really is a bummer when they mess things up for you (and it doesn't even help them)."                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+    ## [3] "whenever i see this game on my shelf, i get a disturbing visual of quark's big head from star trek: deep space nine. i then picture him playing tongo with a bunch of other ferengi...a game that deals with buying, selling, acquiring, and other things you'd normally see on the wall street floor. don't ask me why...i haven't had my coffee yet this morning.acquire: 3-6 players, ages 12+, average play time: 60 to 90 minutes*note: while the box says that the game is for three to six players, i don't see why a two player variant couldn't exist...if one doesn't already. i'm fairly confident that two players with an imagination who are not concerned about following the rulebook to the letter could make do. i also came across the older avalon hill version's rulebook and there is a section for special rules for two players...so feel free to experiment.acquire plays a bit differently than the other games i've played. the closest comparison i could possibly make to what i've already reviewed is airlines europe. in both games, you're buying stock and whoever has more of certain stocks / colors often reaps the biggest reward when payouts occur. more on that in a minute.version & componentsthe version of acquire i purchased is the latest print of the game, by wizards of the coast.i need to get this pet peeve of mine out of the way before i begin. the player tile trays are made of fairly cheap cardboard that you have to punch out and bend to make the pieces assemble. in other words, i had a fun time trying to assemble the player tile trays. in most games i've purchased, tile trays came assembled and were of much better quality.some people may not mind the extra work and the game is fairly cheaper than your average euro-style board game, but c'mon...would it have hurt profits that much to just make the components a little better? also, the player reference tables were part of the manual itself that i had to cut / tear out. for ocd people like me, the manual just doesn't look right now that pages look torn out of it. i don't see why they couldn't have printed reference sheets separate of the manual.previous versions of the game were much nicer looking and of better quality, so much in fact that other reviewers recommend trying to find those older printed versions as opposed to this one. i don't mind average to poor production values if the price is right, but this is just pushing it.game mechanicsthe game board is made of up of squares that form a grid, going from 1a in the upper left hand corner all the way to 12i in the lower right hand corner. to the left of the grid are the available corporations that players can form and to the right is the same reference chart you'll find in the cutouts in the back of the manual.in acquire, turns are fairly simple. players place a tile, players buy up to three stocks, and finally players pick up a new tile from the supply. tiles correspond to the squares / grid on the board...for example...you'd place the 1a tile if you had it onto the 1a square on the board / grid.when a player places a tile next to an existing tile sitting by itself, that player gets to form a corporation. it doesn't become their's mind you, but they do get a free stock card for establishing it. that player can choose any of the available corporations...though some grow differently than others. some corporations are cheap to buy stocks for early on but don't pay out as much when they grow in size while others are expensive to buy stocks for early on but payout is big in the endgame.players continue placing tiles, forming / growing corporations, and buying stock cards until a tile is placed that causes two corporations to bump heads. this is the real meat and potatoes of the game. a few things happen when this occurs.1) the larger corporation acquires or \"eats up\" the smaller one. if the purple corporation for example had six tiles and green had three tiles, purple would acquire green. the exception to the rule is if both corporations are eleven tiles are higher in size. corporations with eleven tiles or more are considered \"safe.\"2) the player who owns the most stock cards in the company that was acquired gains the one time majority shareholder bonus. the amount varies depending on how big the corporation actually is. the player who owns the second most stock cards of the company that was acquired receives the one time minority shareholder bonus. sorry, but there isn't a prize here for third place, unless there is a tie for second place.3) players who own stock in the company that was acquired have a choice to make.- they can sell their stock for cash now, the amount depending on how big the corporation is.- they can trade that stock on a 2 to 1 basis for stock of the company that acquired it.- they can keep their stock, hoping the corporation will form again down the line.the acquired company marker gets put back to its place on the side of the board and can be formed again later on.at the end of the game, shareholder bonuses are given out to the companies that are on the board and their stocks are traded in for cash. the winner is the player with the most money after that is all said and done.the reviewall three kids joined me to form a four player game. explaining the rules wasn't as bad as i thought it would be. i was concerned that the whole buying stocks and acquiring would overwhelm the eleven year old, but ironically he ended up winning the game. he randomly bought stock so that he'd try to have more than everyone else, which ended up working out to his advantage unbeknownst to him.i focused on buying stocks for two corporations in the middle of the board and would have made a lot of money had one acquired the other...but they ended up becoming \"safe\" and i didn't have much money left to buy stocks in other corporations that could still be acquired. i received a nice bonus at the end of the game for all the stock i had, but my son used the money he earned from his acquisitions to buy even more stock than what i had bought up cheaply in the beginning of the game...so he ended up getting the majority shareholder bonus anyway. he earned so much from a particular acquisition that he just started buying out all of the stock cards of particular colors until there were none left.it seems to pay to have money throughout the game and not to focus on one or two corporations, unless you are sure they will pay out. i was tempted to offer him a later bed time if he'd slip me ten grand, but i thought better of it. the game took us about two hours to play...keep in mind, there was a learning curve and three kids of varying ages involved.overall, i really enjoyed the game. acquire is simple enough to learn but deep enough that players can form strategies in order to outdo the other. the random tile placement throughout the game by players keeps the replayability high. i quickly forgot about the quality of the player tile trays when i started playing out scenarios in my head on how certain corporations might play out on the board.the kids were actively working out aloud which corporations they planned to grow and were constantly comparing how many stock cards they had of certain colors. they were often on the edge of their seats when a merger occured...anxious to see how it would play out. the older ones took it a step further and bought out stock in the growing corporations, recognizing how much money they could make when it grows even bigger. the younger one just bought what he could afford and random chance worked in his favor. they all stated that they enjoyed playing the game.i personally recommend acquire if you enjoy games with a financial theme to them, in this case, stocks and money. i recommend that players have a calculator handy, especially for the endgame. the poor production values (when compared to versions previous to it) might turn some people off, but i'd recommend putting that aside in your mind to enjoy the game for what it really is."
+    ## [4] "not that great a game. have only played like once or twice and don't even know where it is now."                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+    ## [5] "great game, not stale... kept us busy and entertained. no two games is ever the same... we enjoyed it for sure."                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+    ## [6] "acquire may not be as old as monopoly, but it is older than me and i can see why it's a classic.  finally, an economic game that is far better than monopoly could ever hope to be!  i know a lot of people who have owned older versions are upset at the quality of the components compared to earlier versions and rightly so, but really, the game just rocks!  buy this cheaper version to play, and then go buy an older expensive version to store in your closet, so you can be an acquire snob saying you have version 19xx something:-)acquire is a game about investing in hotel chains and getting the most money in the end, similar to monopoly, but that is about where the similarity ends.  the game does a wonderful job of creating the experience of investing in stock, simulating growth in value as the hotel chain grows, merging, and fighting to be primary stockholder for huge payouts on mergers.  the gameplay is brilliantly simple, but the strategy and decision making can go way deep!  it is done in such a way that the word elegance comes to mind. even though there is luck involved in the way you draw tiles for this game, i at least get to choose where i want to move by placing a tile. whereas in monopoly, you have to move where the die tells you (roll 'n move) which aggravates me.in this game you perform 3 simple actions: place a tile, buy up to three stocks, and then draw another tile. when i place a tile, i can decide if i want help grow a hotel chain(don't have to own it), create a hotel chain, or merge a hotel chain.  after that, i have to decide on which hotel chain on the board i want to buy stock.  this is where things get interesting, because you know that if you own the most stock in a hotel chain that gets gobbled up in a merger, you'll get some major moolah.  of course the bigger the chain is when it gets gobbled, the bigger the payout is. so, you may finding yourself trying to weigh out when you should merge the hotel chain if someone doesn't do it first and whether or not you grow it.  again, there's a risk involved, because if a hotel chain gets beyond 11 tiles, it is safe from acquisition.  if that happens and you're a major stockholder, then you'll keep growing that \"safe\" hotel chain for the big payout at the end of the game.  when mergers happen, you also have to decide if you should trade your stock in for the new hotel, sell your old stock, or keep it for when you decide to start the old chain back up again.  the game has a lot of subtle strategy as you try to weigh out how you grow a hotel chain or merge it, based on how much stock you own in it or how much someone else has invested in it.acquire is just a beautifully designed game and is a lot of fun to play.  this is a great way to teach your kids about investing in stock too!"
 
-### Stem text
+### Stem Text
 
 ``` r
 library(tm)
@@ -142,35 +141,35 @@ library(tm)
     ## Loading required package: NLP
 
 ``` r
-stem_bg <- tm::stemDocument(boardGames_review$reviewText)
+stem_bg <- tm::stemDocument(boardGames_review$reviewText) # stem document
 
-documentsCorp <- tm::SimpleCorpus(VectorSource(stem_bg))
+documentsCorp <- tm::SimpleCorpus(VectorSource(stem_bg)) #simple corpus document
 
-documentsDTM <- DocumentTermMatrix(documentsCorp)
+documentsDTM <- DocumentTermMatrix(documentsCorp) # get document matrix
 
-inspect(documentsDTM)
+inspect(documentsDTM) 
 ```
 
-    ## <<DocumentTermMatrix (documents: 9023, terms: 80510)>>
-    ## Non-/sparse entries: 982464/725459266
+    ## <<DocumentTermMatrix (documents: 24507, terms: 116231)>>
+    ## Non-/sparse entries: 1908547/2846564570
     ## Sparsity           : 100%
-    ## Maximal term length: 153
+    ## Maximal term length: 484
     ## Weighting          : term frequency (tf)
     ## Sample             :
-    ##       Terms
-    ## Docs   and are for game have that the this with you
-    ##   1083  57  22  16   14    8   17 182   10   18  10
-    ##   262   65  22  24   25   26   31  86   26   10  60
-    ##   3878 175   1  45   13    6   50 430   15   52   0
-    ##   4975  96   7  17    2    7   39  91    3   18   0
-    ##   5606  42  11  18    0   10   34 182   38   24   4
-    ##   5717  24  40  42   31   21   22 120   54   33  57
-    ##   5760  94  20  43   16   24   43 195   23   29  43
-    ##   6670  76  26  25   46   17   20 220   14   17  36
-    ##   7295  60  22  37    1   11   37 141   11   15  24
-    ##   8044  83  27  21   36   27   25 135   20   24  51
+    ##        Terms
+    ## Docs    and are for game play that the this with you
+    ##   11218  50  15  46   34   10   21 159   22   34  49
+    ##   15337  24  40  42   31   25   22 120   54   33  57
+    ##   15784  78  26  44   23    3   24 158   19   31  43
+    ##   17358  76  26  25   46   33   20 220   14   17  36
+    ##   19309  60  22  37    1    3   37 141   11   15  24
+    ##   21521  83  27  21   36    7   25 135   20   24  51
+    ##   22785  53  12  40   25    3   23  99   21   17  26
+    ##   618    65  22  24   25   20   31  86   26   10  60
+    ##   9731  175   1  45   13    0   50 430   15   52   0
+    ##   9898   63  20  27   38    6   15 155   12   26  14
 
-### lemmatize text
+### Lemmatize Text
 
 ``` r
 library(textstem)
@@ -196,14 +195,16 @@ library(textstem)
     ##     readTagged
 
 ``` r
-boardGames_review$reviewText <- lemmatize_strings(boardGames_review$reviewText)
+boardGames_review$reviewText <- lemmatize_strings(boardGames_review$reviewText) # lemmatize strings
 ```
 
-### sentiment analysis
+## Sentiment Analysis (Lexicon: Jockers )
 
 ``` r
+# just show 200 sentiment scores as example
 library(sentimentr)
-jocker_bg <- sentiment(get_sentences(boardGames_review$reviewText[1:200]), polarity_dt = lexicon::hash_sentiment_jockers)
+jocker_bg <- sentiment(get_sentences(boardGames_review$reviewText[1:200]), 
+                       polarity_dt = lexicon::hash_sentiment_jockers) # use jockers as lexicon
 
 jocker_bg_summary <- jocker_bg%>%
   group_by(element_id)%>%      
@@ -213,21 +214,21 @@ jocker_bg_summary <- jocker_bg%>%
     ## `summarise()` ungrouping output (override with `.groups` argument)
 
 ``` r
-boardGames_review$element_id = 1:nrow(boardGames_review)
+boardGames_review$element_id = 1:nrow(boardGames_review) # get a new element id column
 
-boardGames_review_sub200 <- left_join(boardGames_review[1:200,], jocker_bg_summary, by = "element_id")
+boardGames_review_sub200 <- left_join(boardGames_review[1:200,], jocker_bg_summary, by = "element_id") # left join
 
-boardGames_review_sub200 <- boardGames_review_sub200[order(-boardGames_review_sub200$meanSentiment),] 
+boardGames_review_sub200 <- boardGames_review_sub200[order(-boardGames_review_sub200$meanSentiment),] # order by mean sentiment scores
 
-head(boardGames_review_sub200$reviewText)
+head(boardGames_review_sub200$reviewText) # show first five observations
 ```
 
-    ## [1] "i love this game, it's a great intro to euro - style board game. it's easy enough to understand, but it's complex and deep enough to satisfy the adult as good."                                                                                                                                                                                                                                                       
-    ## [2] "love the theme of the puzzle as i can teach my child about real life animal; definitely of educational value. the puzzle's quality be quite strong and seem pretty durable as it be make from a thick cardboard. wish the puzzle come along with a 'trace - along' fold piece so that it can be easy for a toddler to manage on their own. overall, a fun, educational and colourful puzzle for any child."            
-    ## [3] "i be new to dungeon & dragon concept so i want something fairly simple that i can play with kid. i love this game because it: - be easy to understand from good manual - piece and board be of good quality - it come with over dozen of adventure story - with adult around even kid as young as 7 year can learn it pretty quickly - because you can combine piece in any manner you can create your own game easily"
-    ## [4] "we be settler of catan board game fan through and through, but we need something that be comparable in fun so we can take a break from catan. this be perfect. it be very easy to learn and very easy to teach to newcomer. the game play be also very simple ( but you use a lot of strategy as good ). ticket to ride also have a few small expansion that we love as good!"                                         
-    ## [5] "very nice puzzle. i love the big piece, and the durable cardboard. my 3 yo really like it. mudpuppy puzzle be good quality and the design be cute."                                                                                                                                                                                                                                                                    
-    ## [6] "my husband and i enjoy play board game with friend and have find that this be a great game to teach beginner / intermediate player. it do have a good amount of strategy, but the rule be much simple than some other strategy game so it be easy to get the hang of it the first time you play."
+    ## [1] "i love this game, it's a great intro to euro - style board game. it's easy enough to understand, but it's complex and deep enough to satisfy the adult as good." 
+    ## [2] "this game be easy to learn and be a fun game especially if you like train as we do. a game of strategy and teach child to learn to think ahead."                 
+    ## [3] "game strike right balance between simplicity for ease of learn and complexity for replayability. a very enjoyable game to play."                                 
+    ## [4] "feel like a strategic train route game. i really enjoy play with my friend and family. really good buy. love it"                                                 
+    ## [5] "very much enjoy this game as there be a lot go on. it's intelligent, good think out, and a lot of fun to play."                                                  
+    ## [6] "ticket to ride be easy to learn, fairly quick to play. it be a great gateway game from traditional american game into the ( to me ) much fun world of euro game."
 
 ## Topic Models
 
@@ -241,11 +242,12 @@ library(stm)
 ``` r
 set.seed(1001)
 
-holdoutRows <- sample(1:nrow(boardGames_review), 100, replace = FALSE)
+holdoutRows <- sample(1:nrow(boardGames_review), 100, replace = FALSE) # set holdout samples for future validation
 
+# get the data exclude hold out rows
 reviewText <- textProcessor(documents = boardGames_review$reviewText[-c(holdoutRows)], 
                           metadata = boardGames_review[-c(holdoutRows), ], 
-                          stem = FALSE)
+                          stem = FALSE) 
 ```
 
     ## Building corpus... 
@@ -256,27 +258,31 @@ reviewText <- textProcessor(documents = boardGames_review$reviewText[-c(holdoutR
     ## Creating Output...
 
 ``` r
+# prep documents
 reviewPrep <- prepDocuments(documents = reviewText$documents, 
                                vocab = reviewText$vocab,
                                meta = reviewText$meta)
 ```
 
-    ## Removing 10289 of 21762 terms (10289 of 679101 tokens) due to frequency 
-    ## Your corpus now has 8923 documents, 11473 terms and 668812 tokens.
+    ## Removing 13481 of 27954 terms (13481 of 1307754 tokens) due to frequency 
+    ## Your corpus now has 24407 documents, 14473 terms and 1294273 tokens.
 
 ``` r
+# plot K with pre-defined values
 kTest <- searchK(documents = reviewPrep$documents, 
              vocab = reviewPrep$vocab, 
-             K = c(3,4,5,10), verbose = FALSE)   # K = c(3, 4, 5, 10, 20)
+             K = c(3,4,5,10), verbose = FALSE)   
 
 plot(kTest)
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
-Looks like four topics are the best choice
+Looks like four topics are the best choice due to highest semantic
+coherence (how well the words connected together) and lower residuals.
 
 ``` r
+# set k = 4 And get 4 topics
 topics4 <- stm(documents = reviewPrep$documents, 
              vocab = reviewPrep$vocab, seed = 1001,
              K = 4, verbose = FALSE)
@@ -288,200 +294,138 @@ plot(topics4)
 
 ![](README_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
+Topic 1 has over 40% of expected topic proportions and topic 2, 3, and 4
+occupy 20% each. We can see the labels in each topic.
+
 ``` r
 labelTopics(topics4)
 ```
 
     ## Topic 1 Top Words:
-    ##       Highest Prob: set, good, can, plastic, use, much, one 
-    ##       FREX: chalk, easel, crayon, crayola, erase, chalkboard, lego 
-    ##       Lift: aft, allen, americana, aquarelle, asap, avenger, awning 
-    ##       Score: doll, easel, chalk, crayon, erase, lego, marker 
+    ##       Highest Prob: game, card, player, much, play, can, good 
+    ##       FREX: dungeon, pilot, dominion, worker, victory, munchkin, hex 
+    ##       Lift: -ages, admiral, advanture, aegs, afar, agenda, algorithm 
+    ##       Score: player, expansion, card, dominion, strategy, deck, victory 
     ## Topic 2 Top Words:
-    ##       Highest Prob: can, much, toy, use, one, get, letter 
-    ##       FREX: app, keyboard, leapfrog, sonic, download, piano, leappad 
-    ##       Lift: download, -mb, aas, abbreviation, accordian, adams, adapter 
-    ##       Score: sonic, toy, battery, keyboard, app, innotab, leapfrog 
+    ##       Highest Prob: game, play, card, can, fun, much, one 
+    ##       FREX: wager, charade, scrabble, uno, judge, yahtzee, quelf 
+    ##       Lift: adverb, aficionado, alienate, antoinette, applesthe, argumentative, arizona 
+    ##       Score: card, player, game, rule, family, play, question 
     ## Topic 3 Top Words:
-    ##       Highest Prob: piece, old, play, love, year, puzzle, board 
-    ##       FREX: puzzle, jigsaw, cookie, oven, thomas, kitchen, basketball 
-    ##       Lift: acorn, appliance, applique, backsplash, barium, bilibos, blueberry 
-    ##       Score: puzzle, toy, piece, doug, melissa, kitchen, old 
+    ##       Highest Prob: game, play, old, love, year, kid, fun 
+    ##       FREX: granddaughter, grandson, grandchild, christmas, math, niece, birthday 
+    ##       Lift: fam, itis, mcstuffin, recommed, abbys, absolutly, actingout 
+    ##       Score: old, kid, love, daughter, year, game, son 
     ## Topic 4 Top Words:
-    ##       Highest Prob: game, play, card, player, much, board, can 
-    ##       FREX: strategy, token, monopoly, opponent, victory, catan, route 
-    ##       Lift: abyss, accrue, adaptability, adhd, adrenaline, adrenalineradio, adultplaying 
-    ##       Score: game, player, card, strategy, rule, expansion, win
+    ##       Highest Prob: can, much, good, toy, use, one, get 
+    ##       FREX: dart, nerf, app, articulation, install, iphone, device 
+    ##       Lift: acceleration, accesories, accordian, airsoft, alt, appcenter, articulate 
+    ##       Score: toy, leappad, app, battery, camera, tablet, leapfrog
+
+Highest means that words have the highest probability of occurring
+within the topic. The lift was calculated by dividing by frequencies and
+log frequencies computed score. We will focus on the FREX words because
+of those words that frequently occur within the topic. They are also
+exclusive to the topic only, which will be useful for us to
+differentiate all topics from each other
+
+We can get a closer look at the names for each topic:
 
 ``` r
 thoughts_4 <- findThoughts(topics4, texts = reviewPrep$meta$reviewText, n = 1)
 ```
 
 ``` r
-head(topics4$theta, 15)
+head(topics4$theta)
 ```
 
-    ##             [,1]       [,2]      [,3]       [,4]
-    ##  [1,] 0.11056584 0.27549951 0.5638720 0.05006267
-    ##  [2,] 0.07999318 0.12231229 0.7249857 0.07270888
-    ##  [3,] 0.56488983 0.14388995 0.2625485 0.02867167
-    ##  [4,] 0.16492701 0.14903997 0.6664035 0.01962948
-    ##  [5,] 0.14019666 0.26174586 0.5756016 0.02245591
-    ##  [6,] 0.44422197 0.02891452 0.5012881 0.02557540
-    ##  [7,] 0.14241084 0.22100443 0.5926826 0.04390216
-    ##  [8,] 0.24635476 0.15151976 0.5667803 0.03534513
-    ##  [9,] 0.08398334 0.29258730 0.5649774 0.05845196
-    ## [10,] 0.22934983 0.14565795 0.5066526 0.11833957
-    ## [11,] 0.31457171 0.06611851 0.5971557 0.02215405
-    ## [12,] 0.07947045 0.02563969 0.8651595 0.02973036
-    ## [13,] 0.24867450 0.04034703 0.6690334 0.04194508
-    ## [14,] 0.12146192 0.02073470 0.8398628 0.01794056
-    ## [15,] 0.05467746 0.01298791 0.9211755 0.01115911
+    ##            [,1]       [,2]       [,3]       [,4]
+    ## [1,] 0.30614938 0.38063935 0.27802669 0.03518458
+    ## [2,] 0.03682991 0.57511958 0.10161880 0.28643171
+    ## [3,] 0.76305593 0.11990174 0.06468260 0.05235972
+    ## [4,] 0.04359460 0.31538507 0.55384259 0.08717774
+    ## [5,] 0.04634684 0.29515706 0.59142687 0.06706923
+    ## [6,] 0.84197871 0.06964528 0.07738178 0.01099424
 
-We found that Doc 14 has a probability of 81.6% for belonging to topic 5
-and let’s pull the original review out and see
+We found that Doc 1 has a probability of 68.85% for belonging to topic
+2. Doc 5 has a probability of 34.10%, 46.76% for belonging to topic 1
+and 2. We can pull the original review out and see
 
 ``` r
-board_game_df[14,'reviewText']
+board_game_df[1,'reviewText']
 ```
 
-    ## [1] "I appreciate the materials used to create this puzzle and our three year-old loves the picture that is formed when the puzzle is complete. Soy inks + recycled cardboard = Wonderful.I have only one criticism, and it's a minor one. Since the puzzle is intended for a younger audience, it might be nice if the pieces were a bit thicker. Our son has good fine motor skills, but the pieces can still bend and crease as he works to fit them together. With that said however, the creasing may be due more to his impatience when the pieces don't seem to fit right than with the build quality of the puzzle."
+    ## [1] "We were thrilled to find Acquire finally; my husband grew up loving this game. Ordered it for my brother.  The game requires strategy, planning, and never ends the same way.  It is a classic, must-have addition for any game closet.  It's a little more time intensive, and the board isn't as flashy as newer games, but hey -- it is exciting to play.  It's all about the acquisitions."
 
 ``` r
-tail(topics4$theta, 15)
+board_game_df[5,'reviewText']
 ```
 
-    ##               [,1]        [,2]       [,3]       [,4]
-    ## [8909,] 0.17932955 0.285611781 0.51315895 0.02189971
-    ## [8910,] 0.83911625 0.020123625 0.12099271 0.01976742
-    ## [8911,] 0.64227364 0.045901249 0.29827016 0.01355495
-    ## [8912,] 0.83402390 0.043401809 0.10829743 0.01427686
-    ## [8913,] 0.01066646 0.005822944 0.04883761 0.93467299
-    ## [8914,] 0.13270296 0.015408700 0.11722998 0.73465836
-    ## [8915,] 0.16482517 0.466356235 0.34277428 0.02604432
-    ## [8916,] 0.21898462 0.536951979 0.23006677 0.01399663
-    ## [8917,] 0.33167597 0.403887313 0.24903094 0.01540578
-    ## [8918,] 0.15149815 0.146179719 0.68981943 0.01250270
-    ## [8919,] 0.23365551 0.179853939 0.57326150 0.01322906
-    ## [8920,] 0.40043981 0.260755404 0.27349471 0.06531008
-    ## [8921,] 0.74373249 0.042518559 0.20168253 0.01206642
-    ## [8922,] 0.58541814 0.035634232 0.36595285 0.01299478
-    ## [8923,] 0.21014529 0.558834953 0.21631736 0.01470240
-
-Doc 8913 has a probability of 84.1% for belonging to topic 1
+    ## [1] "great game, not stale... kept us busy and entertained. No two games is ever the same... We enjoyed it for sure."
 
 ``` r
-board_game_df[8913,'reviewText']
+reviewPrep$meta[1, ]
 ```
 
-    ## [1] "I grew up loving to play with Barbies.  I loved them so much that my father made me a wooden case just to hold mine safely and I still have them to this day.  I also grew up playing with \"Fashion Plates\" a drawing and stencil kit that allowed you to \"make fashions\" that you could color and texture with several variations.  I was hoping this Barbie might be as much fun.She isn't.First there are only six pieces of clothing that you can \"iron\" the stickers that come with this onto.  This limited canvas on which to press the stickers is very annoying on two levels -- the first is simply that you don't have many clothes to use it on but perhaps you could apply them to other clothes, the second is that some of the tops are patterned and that looks a bit off with the stickers.Be wary of the packaging - yes the cardboard can be recycled as can the bigger outer plastic shell but that's where the good packaging ends.  There were so many tiny attachment points for this thing and so many plastic tabs to maneuver that I got five scratches opening it.  I can't imagine a child safely opening it, in fact I wouldn't let a child try to open it at all.But the most annoying thing about this is by having a set of stickers and no blank sticker material you are immediately limiting the creativity of the child.  This is not designing anything, it is merely adding stickers and once that's done, you are done and this doll becomes like any other Barbie.Apparently I can't add my own photos to show you the problems I found."
+    ##   reviewerName
+    ## 1        Betsy
+    ##                                                                                                                                                                                                                                                                                                                                                                  reviewText
+    ## 1 we be thrill to find acquire finally; my husband grow up love this game. order it for my brother. the game require strategy, plan, and never end the same way. it be a classic, must - have addition for any game closet. it's a little much time intensive, and the board isn't as flashy as new game, but hey - - it be excite to play. it's all about the acquisition.
+    ##   overall               summary reviewTime element_id
+    ## 1       5 one of the best games 2013-05-08          1
 
 ``` r
-reviewPrep$meta[14, ]
+reviewPrep$meta[5, ]
 ```
 
-    ##                 reviewerName
-    ## 14 Adam B. Shaeffer "ashaef"
-    ##                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            reviewText
-    ## 14 i appreciate the material use to create this puzzle and our three year - old love the picture that be form when the puzzle be complete. soy ink + recycle cardboard = wonderful. i have only one criticism, and it's a minor one. since the puzzle be intend for a young audience, it may be nice if the piece be a bite thick. our son have good fine motor skill, but the piece can still bend and crease as he work to fit them together. with that say however, the crease may be due much to his impatience when the piece don't seem to fit right than with the build quality of the puzzle.
-    ##    overall        summary reviewTime element_id
-    ## 14       4 A good product 2013-01-07         14
+    ##   reviewerName
+    ## 5         Drew
+    ##                                                                                                   reviewText
+    ## 5 great game, not stale... keep us busy and entertain. no two game be ever the same... we enjoy it for sure.
+    ##   overall      summary reviewTime element_id
+    ## 5       5 entertaining 2013-02-04          5
+
+We can also see what terms are in documents 1 and document 5:
 
 ``` r
-reviewPrep$meta[8913, ]
-```
-
-    ##                                   reviewerName
-    ## 8913 Andrionni Ribo "Amateur Critical Analyst"
-    ##                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                reviewText
-    ## 8913 this game be currently run as a spiel de jahres nominee for 2014 ( a prestigious german award for boardgames ) and i pick up this game because of that, and i must say this game be quite wonderful from 2 to 4 player. - overview - the goal be to be the first person to 15 victory point which trigger the end of the game. player ultimately spend their turn either collect gem or purchase development card with collect gem. development card always impart bonus of certain gem color. this bonus color reduce the cost of future development card far accelerate the game to the end. certain card also contain prestige point, but they aren't as easy to attain initially and require some careful plan. be careful, though, as gem can run in short supply or a much need card get purchase or reserve for your opponent before you can get to it. as a add goal, optional noble tile be available to all and get additional point to that who have the right combination of development card. - component quality - the component of this game be quite superb. the art be beautiful to look at in this game. beautifully illustrate with excellent clear color and shape. i really enjoy the quality of the chip. remind me of poker chip. perhaps make of clay? it have a very nice heft to it, and there's a nice thud which add some character to this game. the card be also of very good stock with white border to its backing. they'll last for a bite. the bonus noble tile be a nice thick cardboard. the insert of the box hold everything quite good. absolutely no shortcut in quality. - criticism - the theme of this game be almost paste on. it doesn't matter really as everything else mention elevate this game and be still fun. - overall - overall, i enjoy this game a lot. easy to explain with a large amount of depth. a game that have the potential to be quite fun for all age and all experience. my friend who never play board game this past decade love it and will probably buy a copy. i, myself, who have game of all type and play all sort of game find this a excellent addition and play to my collection and a really strong contender in this year's nominee. quite a splendid game.; - ) highly recommend.
-    ##      overall
-    ## 8913       5
-    ##                                                                                 summary
-    ## 8913 A Great, Mechanically Straight-Forward Game of Gem Collecting. Wow. Such Splendor.
-    ##      reviewTime element_id
-    ## 8913 2014-05-26       9013
-
-We can also see what terms are in documents 14:
-
-``` r
-reviewPrep$documents[[14]]
+reviewPrep$documents[[1]]
 ```
 
     ##      [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10] [,11] [,12] [,13] [,14]
-    ## [1,]  484  660  940 1011 1291 1403 1453 1966 2272  2273  2305  2936  3041  3740
-    ## [2,]    1    1    1    1    1    1    1    1    2     1     1     1     1     1
+    ## [1,]  118  119  160 1331 1559 2160 2220 4053 4297  4627  4631  4708  5064  5494
+    ## [2,]    1    1    1    1    1    1    1    1    1     1     1     1     4     1
     ##      [,15] [,16] [,17] [,18] [,19] [,20] [,21] [,22] [,23] [,24] [,25] [,26]
-    ## [1,]  3774  3920  4292  4818  4945  5111  5178  5890  6099  6119  6319  6487
-    ## [2,]     2     1     1     1     1     1     1     1     1     2     1     1
-    ##      [,27] [,28] [,29] [,30] [,31] [,32] [,33] [,34] [,35] [,36] [,37] [,38]
-    ## [1,]  6519  6695  6890  6905  7408  7412  7951  7966  8188  8504  8738  8870
-    ## [2,]     1     1     1     2     1     3     4     1     1     1     1     1
-    ##      [,39] [,40] [,41] [,42] [,43] [,44] [,45] [,46] [,47] [,48] [,49] [,50]
-    ## [1,]  9114  9156  9345  9386  9650 10169 10208 10301 10830 11307 11326 11398
+    ## [1,]  5836  6073  6506  6664  7337  7438  8230  8279  8429  8434  8823  9444
     ## [2,]     1     1     1     1     1     1     1     1     1     1     1     1
-    ##      [,51]
-    ## [1,] 11424
-    ## [2,]     1
+    ##      [,27] [,28] [,29] [,30] [,31] [,32]
+    ## [1,]  9472 10553 12251 12901 12968 14015
+    ## [2,]     1     1     1     1     1     1
 
 ``` r
-reviewPrep$vocab[reviewPrep$documents[[14]][1, ]]
+reviewPrep$vocab[reviewPrep$documents[[1]][1, ]]
 ```
 
-    ##  [1] "appreciate" "audience"   "bend"       "bite"       "build"     
-    ##  [6] "can"        "cardboard"  "complete"   "crease"     "create"    
-    ## [11] "criticism"  "dont"       "due"        "fine"       "fit"       
-    ## [16] "form"       "good"       "however"    "impatience" "ink"       
-    ## [21] "intend"     "love"       "material"   "may"        "minor"     
-    ## [26] "motor"      "much"       "nice"       "old"        "one"       
-    ## [31] "picture"    "piece"      "puzzle"     "quality"    "recycle"   
-    ## [36] "right"      "say"        "seem"       "since"      "skill"     
-    ## [41] "son"        "soy"        "still"      "thick"      "three"     
-    ## [46] "together"   "use"        "wonderful"  "work"       "year"      
-    ## [51] "young"
+    ##  [1] "acquire"     "acquisition" "addition"    "board"       "brother"    
+    ##  [6] "classic"     "closet"      "end"         "excite"      "finally"    
+    ## [11] "find"        "flashy"      "game"        "grow"        "hey"        
+    ## [16] "husband"     "intensive"   "isnt"        "little"      "love"       
+    ## [21] "much"        "must"        "never"       "new"         "order"      
+    ## [26] "plan"        "play"        "require"     "strategy"    "thrill"     
+    ## [31] "time"        "way"
 
 ``` r
-reviewPrep$vocab[reviewPrep$documents[[8913]][1, ]]
+reviewPrep$vocab[reviewPrep$documents[[5]][1, ]]
 ```
 
-    ##   [1] "absolutely"  "accelerate"  "add"         "addition"    "additional" 
-    ##   [6] "age"         "almost"      "also"        "always"      "amount"     
-    ##  [11] "arent"       "art"         "attain"      "available"   "award"      
-    ##  [16] "backing"     "beautiful"   "beautifully" "bite"        "board"      
-    ##  [21] "boardgames"  "bonus"       "border"      "box"         "buy"        
-    ##  [26] "can"         "card"        "cardboard"   "careful"     "certain"    
-    ##  [31] "character"   "chip"        "clay"        "clear"       "collect"    
-    ##  [36] "collection"  "color"       "combination" "component"   "contain"    
-    ##  [41] "contender"   "copy"        "cost"        "criticism"   "currently"  
-    ##  [46] "decade"      "depth"       "development" "doesnt"      "easy"       
-    ##  [51] "either"      "elevate"     "else"        "end"         "enjoy"      
-    ##  [56] "everything"  "excellent"   "experience"  "explain"     "far"        
-    ##  [61] "find"        "first"       "friend"      "fun"         "future"     
-    ##  [66] "game"        "gem"         "german"      "get"         "goal"       
-    ##  [71] "good"        "heft"        "highly"      "hold"        "illustrate" 
-    ##  [76] "initially"   "insert"      "jahres"      "large"       "last"       
-    ##  [81] "look"        "lot"         "love"        "make"        "matter"     
-    ##  [86] "mention"     "much"        "must"        "need"        "never"      
-    ##  [91] "nice"        "noble"       "nominee"     "opponent"    "optional"   
-    ##  [96] "overall"     "overview"    "past"        "paste"       "perhaps"    
-    ## [101] "person"      "pick"        "plan"        "play"        "player"     
-    ## [106] "point"       "poker"       "potential"   "prestige"    "prestigious"
-    ## [111] "probably"    "purchase"    "quality"     "quite"       "really"     
-    ## [116] "recommend"   "reduce"      "remind"      "require"     "reserve"    
-    ## [121] "right"       "run"         "say"         "shape"       "short"      
-    ## [126] "shortcut"    "sort"        "spend"       "spiel"       "splendid"   
-    ## [131] "still"       "stock"       "strong"      "superb"      "supply"     
-    ## [136] "theme"       "theres"      "theyll"      "thick"       "though"     
-    ## [141] "thud"        "tile"        "trigger"     "turn"        "type"       
-    ## [146] "ultimately"  "victory"     "white"       "will"        "wonderful"  
-    ## [151] "years"
+    ##  [1] "busy"      "enjoy"     "entertain" "ever"      "game"      "great"    
+    ##  [7] "keep"      "stale"     "sure"      "two"
 
 ## Prediction sentiment scores for holdout samples
 
 ``` r
 newReviewText <- textProcessor(documents = boardGames_review$reviewText[holdoutRows], 
                           metadata = boardGames_review[holdoutRows, ], 
-                          stem = FALSE)
+                          stem = FALSE) # use holdout rows to build test data
 ```
 
     ## Building corpus... 
@@ -495,11 +439,11 @@ newReviewText <- textProcessor(documents = boardGames_review$reviewText[holdoutR
 newReviewCorp <- alignCorpus(new = newReviewText, old.vocab = topics4$vocab)
 ```
 
-    ## Your new corpus now has 100 documents, 2177 non-zero terms of 2359 total terms in the original set. 
-    ## 182 terms from the new data did not match.
-    ## This means the new data contained 19.0% of the old terms
-    ## and the old data contained 92.3% of the unique terms in the new data. 
-    ## You have retained 9836 tokens of the 10044 tokens you started with (97.9%).
+    ## Your new corpus now has 100 documents, 1669 non-zero terms of 1759 total terms in the original set. 
+    ## 90 terms from the new data did not match.
+    ## This means the new data contained 11.5% of the old terms
+    ## and the old data contained 94.9% of the unique terms in the new data. 
+    ## You have retained 6732 tokens of the 6828 tokens you started with (98.6%).
 
 ``` r
 newReviewFitted <- fitNewDocuments(model = topics4, documents = newReviewCorp$documents, 
@@ -509,37 +453,41 @@ newReviewFitted <- fitNewDocuments(model = topics4, documents = newReviewCorp$do
     ## ....................................................................................................
 
 ``` r
-newReviewFitted$theta[1:10,]
+newReviewFitted$theta[1:10,]  # print out 10 samples probabilities for each topic 
 ```
 
-    ##             [,1]       [,2]       [,3]       [,4]
-    ##  [1,] 0.42054239 0.02167696 0.15704170 0.40073895
-    ##  [2,] 0.04108597 0.08923354 0.43137604 0.43830445
-    ##  [3,] 0.10210228 0.64345973 0.18625860 0.06817940
-    ##  [4,] 0.08072182 0.02568311 0.68188353 0.21171154
-    ##  [5,] 0.14547568 0.02464434 0.20957414 0.62030583
-    ##  [6,] 0.01260009 0.01199076 0.36419434 0.61121482
-    ##  [7,] 0.02041095 0.88519978 0.04335185 0.05103742
-    ##  [8,] 0.03773545 0.09238298 0.84981507 0.02006650
-    ##  [9,] 0.30239589 0.11728915 0.56868493 0.01163004
-    ## [10,] 0.02214576 0.16983662 0.20591476 0.60210287
+    ##             [,1]       [,2]      [,3]       [,4]
+    ##  [1,] 0.45677290 0.19631375 0.1852424 0.16167092
+    ##  [2,] 0.15747634 0.72253806 0.1051876 0.01479803
+    ##  [3,] 0.01382934 0.02627644 0.2210813 0.73881287
+    ##  [4,] 0.08194197 0.50269301 0.3668761 0.04848896
+    ##  [5,] 0.09235351 0.68007520 0.1848554 0.04271587
+    ##  [6,] 0.38676099 0.09399372 0.1958227 0.32342263
+    ##  [7,] 0.02474704 0.20152859 0.7085023 0.06522205
+    ##  [8,] 0.03294169 0.63310673 0.2930435 0.04090813
+    ##  [9,] 0.04689642 0.09870762 0.4670619 0.38733407
+    ## [10,] 0.02654043 0.10749679 0.7090574 0.15690541
+
+## Time Series Topic Model Analysis
 
 ``` r
+# clean the data 
 clean_boardGames_review <- boardGames_review%>%
   mutate( 
-         reviewText = str_replace_all(reviewText, "\n", " "),   
-         reviewText = str_replace_all(reviewText, "(\\[.*?\\])", ""),
-         reviewText = str_squish(reviewText), 
-         reviewText = gsub("([a-z])([A-Z])", "\\1 \\2", reviewText), 
-         reviewText = tolower(reviewText), 
-         reviewText = removeWords(reviewText, c("’", stopwords(kind = "en"))), 
-         reviewText = removePunctuation(reviewText), 
-         reviewText = removeNumbers(reviewText),
-         reviewText = textstem::lemmatize_strings(reviewText), 
-         year = lubridate::year(reviewTime))
+         reviewText = str_replace_all(reviewText, "\n", " "),  # get rid of space  
+         reviewText = str_replace_all(reviewText, "(\\[.*?\\])", ""),  # get rid of stuff in []
+         reviewText = str_squish(reviewText), # reduce repeated white space
+         reviewText = gsub("([a-z])([A-Z])", "\\1 \\2", reviewText), # small letter followed by capital letter
+         reviewText = tolower(reviewText), # lower text
+         reviewText = removeWords(reviewText, c("’", stopwords(kind = "en"))),  # remove stop words
+         reviewText = removePunctuation(reviewText), # remove punctuation
+         reviewText = removeNumbers(reviewText), # remove numbers
+         reviewText = textstem::lemmatize_strings(reviewText),  # lemmatize text
+         year = lubridate::year(reviewTime)) # extract year out of date column
 ```
 
 ``` r
+# text processor
 predictorText <- textProcessor(documents = clean_boardGames_review$reviewText, 
                           metadata = clean_boardGames_review, 
                           stem = FALSE)
@@ -553,23 +501,26 @@ predictorText <- textProcessor(documents = clean_boardGames_review$reviewText,
     ## Creating Output...
 
 ``` r
+# prep documents
 reviewPrep <- prepDocuments(documents = predictorText$documents, 
                                vocab = predictorText$vocab,
                                meta = predictorText$meta)
 ```
 
-    ## Removing 9777 of 20980 terms (9777 of 668613 tokens) due to frequency 
-    ## Your corpus now has 9023 documents, 11203 terms and 658836 tokens.
+    ## Removing 12847 of 26862 terms (12847 of 1279237 tokens) due to frequency 
+    ## Your corpus now has 24507 documents, 14015 terms and 1266390 tokens.
 
 ``` r
+# stm documents with K = 4 
 topicPredictor <- stm(documents = reviewPrep$documents,
              vocab = reviewPrep$vocab, prevalence = ~ year,
              data = reviewPrep$meta, K = 4, verbose = FALSE)
 
-
+# year effect
 yearEffect <- estimateEffect(1:4 ~ year, stmobj = topicPredictor,
                metadata = reviewPrep$meta)
 
+# print summary statistics and p values
 summary(yearEffect, topics = c(1:4))
 ```
 
@@ -582,9 +533,9 @@ summary(yearEffect, topics = c(1:4))
     ## Topic 1:
     ## 
     ## Coefficients:
-    ##              Estimate Std. Error t value Pr(>|t|)    
-    ## (Intercept) 17.113018   2.715719   6.301 3.09e-10 ***
-    ## year        -0.008339   0.001350  -6.178 6.78e-10 ***
+    ##               Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept) -1.855e+01  1.614e+00  -11.49   <2e-16 ***
+    ## year         9.305e-03  8.022e-04   11.60   <2e-16 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
@@ -593,8 +544,8 @@ summary(yearEffect, topics = c(1:4))
     ## 
     ## Coefficients:
     ##               Estimate Std. Error t value Pr(>|t|)    
-    ## (Intercept) -22.335807   2.858077  -7.815 6.11e-15 ***
-    ## year          0.011215   0.001421   7.895 3.24e-15 ***
+    ## (Intercept) 13.7898833  1.7804752   7.745 9.92e-15 ***
+    ## year        -0.0067073  0.0008849  -7.579 3.60e-14 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
@@ -602,44 +553,20 @@ summary(yearEffect, topics = c(1:4))
     ## Topic 3:
     ## 
     ## Coefficients:
-    ##               Estimate Std. Error t value Pr(>|t|)
-    ## (Intercept) -0.5207365  2.3489826  -0.222    0.825
-    ## year         0.0003213  0.0011676   0.275    0.783
+    ##               Estimate Std. Error t value Pr(>|t|)  
+    ## (Intercept) -3.2857538  1.7372698  -1.891   0.0586 .
+    ## year         0.0017984  0.0008635   2.083   0.0373 *
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## 
     ## Topic 4:
     ## 
     ## Coefficients:
-    ##              Estimate Std. Error t value Pr(>|t|)  
-    ## (Intercept)  6.840464   3.618158   1.891   0.0587 .
-    ## year        -0.003246   0.001798  -1.805   0.0712 .
+    ##               Estimate Std. Error t value Pr(>|t|)    
+    ## (Intercept)  9.0189334  1.6371404   5.509 3.65e-08 ***
+    ## year        -0.0043822  0.0008137  -5.386 7.28e-08 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
-``` r
-plot.estimateEffect(yearEffect, "year", method = "continuous",
-                    model = topicPredictor, topics = 1, labeltype = "frex")
-```
-
-![](README_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
-
-``` r
-plot.estimateEffect(yearEffect, "year", method = "continuous",
-                    model = topicPredictor, topics = 2, labeltype = "frex")
-```
-
-![](README_files/figure-gfm/unnamed-chunk-27-2.png)<!-- -->
-
-``` r
-plot.estimateEffect(yearEffect, "year", method = "continuous",
-                    model = topicPredictor, topics = 3, labeltype = "frex")
-```
-
-![](README_files/figure-gfm/unnamed-chunk-27-3.png)<!-- -->
-
-``` r
-plot.estimateEffect(yearEffect, "year", method = "continuous",
-                    model = topicPredictor, topics = 4, labeltype = "frex")
-```
-
-![](README_files/figure-gfm/unnamed-chunk-27-4.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->![](README_files/figure-gfm/unnamed-chunk-27-2.png)<!-- -->![](README_files/figure-gfm/unnamed-chunk-27-3.png)<!-- -->![](README_files/figure-gfm/unnamed-chunk-27-4.png)<!-- -->
