@@ -570,3 +570,6 @@ summary(yearEffect, topics = c(1:4))
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 
 ![](README_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->![](README_files/figure-gfm/unnamed-chunk-27-2.png)<!-- -->![](README_files/figure-gfm/unnamed-chunk-27-3.png)<!-- -->![](README_files/figure-gfm/unnamed-chunk-27-4.png)<!-- -->
+
+
+In topic 1, customers talked about dominion, dungeon and knight. And this topic trend has been increased by 15% between 2000 and 2014. The number of topics belonging to topic 2 in traditional board games, including scrabble, Uno, and Yahtzee, has decreased from 40% to 28% between 2000 and 2014. We can guess grandparents are the ones who wrote these comments/reviews bought some games as birthday or Christmas gift for their grandson and granddaughter from the words in topic 3. The number of topic 3 trend overall has increased a little bit to 35% in 2014 compared to 30% in 2000. The number of topics belonging to topic 4 went to another direction of tradional games that requires device and iPhone. Surprisingly, the number of topic 4 trend also decreased by 6% between 2000 and 2014.
