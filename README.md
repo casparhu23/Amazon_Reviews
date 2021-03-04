@@ -1,5 +1,5 @@
 
-![](~/Amazon_Reviews/games_01.png)
+![](https://www.sellbrite.com/wp-content/uploads/Amazon-Product-Categories-1.png)
 
 This project is about Amazon toys & games review data. The dataset can
 be found at <https://jmcauley.ucsd.edu/data/amazon/>. We performed
