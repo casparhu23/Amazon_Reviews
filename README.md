@@ -1,5 +1,5 @@
 
-![](/Users/Caspar/Documents/GitHub_Project/Amazon_Reviews/games_01.png)
+![](~/Amazon_Reviews/games_01.png)
 
 This project is about Amazon toys & games review data. The dataset can
 be found at <https://jmcauley.ucsd.edu/data/amazon/>. We performed
