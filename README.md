@@ -6,7 +6,7 @@ be found at <https://jmcauley.ucsd.edu/data/amazon/>. We performed
 sentiment analysis and topic models on games related views. We got
 sentiment score for each customer’s review. We only showed 200 customer
 sentiment score for this project. Then we found out the optimal number
-for qll the topics within 24000 customer reviews. Finally, we conducted
+for qll the topics within 25000 customer reviews. Finally, we conducted
 the time series between 2000 and 2014 to see how the number of topics
 changed within 10 years.
 
